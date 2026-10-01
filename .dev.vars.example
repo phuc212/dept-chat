@@ -1,0 +1,5 @@
+# Copy thành .dev.vars (đã có trong .gitignore). Dùng cho cả `npm run dev` và `wrangler pages dev`.
+SITE_PASSWORD=dev
+# Bỏ trống thì bot trả lời bằng FAQ từ khoá.
+ANTHROPIC_API_KEY=
+# ANTHROPIC_MODEL=claude-sonnet-4-5

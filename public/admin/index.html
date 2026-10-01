@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quản trị · Hỏi đáp bộ phận</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body data-view="login">
+  <section id="login" aria-labelledby="login-title">
+    <form id="login-form" class="login-card" novalidate>
+      <div class="login-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9.5 12l1.8 1.8 3.4-3.6"/></svg>
+      </div>
+      <h1 id="login-title">Quản trị</h1>
+      <p class="login-sub">Hỏi đáp bộ phận</p>
+      <label class="sr-only" for="admin-key">Mật khẩu</label>
+      <div class="pw">
+        <input id="admin-key" type="password" autocomplete="current-password" placeholder="Mật khẩu" required>
+        <button type="button" class="pw-eye" id="pw-eye" aria-label="Hiện mật khẩu" aria-pressed="false">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <label class="check login-remember"><input type="checkbox" id="remember"> Ghi nhớ trên máy này</label>
+      <p id="login-err" class="login-err" role="alert" hidden></p>
+      <button type="submit" class="login-btn" id="login-btn">Đăng nhập</button>
+      <a class="login-back" href="/">← Về trang hỏi đáp</a>
+    </form>
+  </section>
+
+  <header class="top">
+    <h1>Quản trị</h1>
+    <nav class="top-links"><a href="/">← Trang hỏi đáp</a><button type="button" class="ghost small" id="logout">Đăng xuất</button></nav>
+  </header>
+
+  <main>
+
+    <div id="app" hidden>
+      <div id="warn-kv" class="notice warn" hidden>
+        <b>Chưa lưu được cấu hình:</b> project chưa gắn KV. Cloudflare → <b>Storage &amp; Databases → KV</b> → Create namespace →
+        project <b>dept-chat → Settings → Bindings → Add → KV namespace</b>, tên biến <code>CONFIG</code> → deploy lại.
+      </div>
+
+      <nav class="tabs" role="tablist">
+        <button type="button" role="tab" data-tab="stats" aria-selected="true">📊 Thống kê</button>
+        <button type="button" role="tab" data-tab="config" aria-selected="false">⚙ Cấu hình</button>
+      </nav>
+
+      <div id="tab-stats" class="tabpane">
+        <div id="warn-db" class="notice warn" hidden>
+          <b>Chưa bật thống kê:</b> project chưa gắn database D1. Cloudflare → <b>dept-chat → Settings → Bindings → Add → D1 database</b>,
+          tên biến <code>DB</code>, chọn database (vd <code>dept-chat-db</code>) → Save → deploy lại. Bảng dữ liệu tự tạo, không cần làm gì thêm.
+        </div>
+        <section class="card" id="stats-card" hidden>
+          <div class="row between">
+            <h2>Thống kê câu hỏi</h2>
+            <div class="row">
+              <select id="st-days" aria-label="Khoảng thời gian">
+                <option value="7">7 ngày</option><option value="30" selected>30 ngày</option><option value="90">90 ngày</option><option value="180">180 ngày</option>
+              </select>
+              <button type="button" id="st-refresh" class="ghost small">Làm mới</button>
+              <button type="button" id="st-csv" class="ghost small">Tải CSV</button>
+            </div>
+          </div>
+          <p id="st-off" class="notice warn" hidden>Đang <b>tắt</b> lưu thống kê (Cấu hình → Cài đặt chung). Số liệu dưới đây là dữ liệu cũ.</p>
+          <div class="tiles" id="st-tiles"></div>
+          <div class="grid2 charts">
+            <figure class="chart"><figcaption>Câu hỏi theo ngày</figcaption><div id="st-days-chart" class="cols"></div></figure>
+            <figure class="chart"><figcaption>Theo phòng ban</figcaption><div id="st-dept-chart" class="hbars"></div></figure>
+          </div>
+        </section>
+        <section class="card" id="st-miss-card" hidden>
+          <h2>Câu bot chưa trả lời được <small class="muted">— nên bổ sung tài liệu cho các câu này</small></h2>
+          <div class="tablewrap"><table id="st-miss"></table></div>
+        </section>
+        <section class="card" id="st-down-card" hidden>
+          <h2>Bị đánh giá 👎 <small class="muted">— câu trả lời sai hoặc chưa đủ</small></h2>
+          <div class="tablewrap"><table id="st-down"></table></div>
+        </section>
+        <section class="card" id="st-top-card" hidden>
+          <h2>Hỏi nhiều nhất</h2>
+          <div class="tablewrap"><table id="st-top"></table></div>
+          <details><summary>50 câu hỏi gần đây</summary><div class="tablewrap"><table id="st-recent"></table></div></details>
+          <div class="actions end"><button type="button" id="st-clear" class="ghost small danger-text">Xoá toàn bộ dữ liệu thống kê</button></div>
+        </section>
+      </div>
+
+      <div id="tab-config" class="tabpane" hidden>
+      <section class="card">
+        <div class="row between">
+          <h2>Phòng ban <span id="count" class="muted"></span></h2>
+          <button type="button" id="btn-add" class="ghost small">＋ Thêm phòng ban</button>
+        </div>
+        <p class="muted hint">Mỗi phòng chọn <b>một</b> nguồn tài liệu: <b>tải file lên</b> trực tiếp (.docx, .xlsx, .pdf, .txt, .md, .csv — không cần key) hoặc <b>link thư mục</b> Google Drive / SharePoint (cần key, bot tự đọc lại khi file đổi). Chưa có tài liệu = chỉ trả lời từ FAQ mẫu.</p>
+        <ol id="depts" class="depts"></ol>
+      </section>
+
+      <section class="card" id="card-keys">
+        <h2>Khoá kết nối</h2>
+        <p class="muted hint">Chỉ nhập được, không xem lại được: sau khi lưu, trang chỉ hiện “Đã có” và vài ký tự cuối để nhận ra.</p>
+
+        <div class="key key-group" id="grp-folder">
+          <div class="key-head">
+            <div><b>Đọc thư mục qua link</b> <small class="muted">chỉ cần khi có phòng chọn “🔗 Link thư mục” — phòng tải file lên thì bỏ qua</small></div>
+            <span id="folder-state" class="pill"></span>
+          </div>
+          <div class="d-src" role="tablist" aria-label="Loại thư mục">
+            <button type="button" class="seg" data-ftab="gdrive" role="tab">Google Drive <span class="dot" data-for="GOOGLE_SA_KEY"></span></button>
+            <button type="button" class="seg" data-ftab="sp" role="tab">SharePoint <span class="dot" data-for="SHAREPOINT_CLIENT_SECRET"></span></button>
+          </div>
+          <div class="ftab" data-ftab="gdrive">
+            <div class="key flat" data-key="GOOGLE_SA_KEY">
+              <div class="key-head">
+                <div><b>Key Google (file key.json)</b></div>
+                <span class="k-state pill"></span>
+              </div>
+              <div class="k-share" hidden>
+                Share từng thư mục phòng ban trên Drive cho email này, quyền <b>Người xem</b>:
+                <div class="copyrow"><code class="k-hint"></code><button type="button" class="ghost small k-copy">Copy</button></div>
+              </div>
+              <div class="k-edit">
+                <textarea class="k-input" rows="3" spellcheck="false" placeholder='Dán nội dung file key.json — hoặc bấm "Chọn file"'></textarea>
+                <div class="row">
+                  <label class="ghost small filebtn">Chọn file key.json<input type="file" class="k-file" accept=".json,application/json" hidden></label>
+                  <button type="button" class="small k-save">Lưu khoá</button>
+                  <button type="button" class="ghost small k-cancel" hidden>Huỷ</button>
+                </div>
+              </div>
+              <div class="row k-actions" hidden>
+                <button type="button" class="ghost small k-change">Đổi khoá</button>
+                <button type="button" class="ghost small danger-text k-del">Xoá khoá</button>
+              </div>
+              <p class="k-msg small"></p>
+              <details><summary>Chưa có key.json? Cách tạo (~10 phút)</summary>
+                <ol class="steps">
+                  <li>console.cloud.google.com → tạo project → <b>APIs &amp; Services → Library</b> → bật <b>Google Drive API</b>.</li>
+                  <li><b>IAM &amp; Admin → Service Accounts → Create</b> (không cần role) → vào account → <b>Keys → Add key → JSON</b> → tải file về.</li>
+                  <li>Quay lại đây bấm <b>Chọn file key.json</b> → <b>Lưu khoá</b>. Xong thì xoá file trên máy nếu không cần nữa.</li>
+                </ol>
+              </details>
+            </div>
+          </div>
+          <div class="ftab" data-ftab="sp" hidden>
+            <p class="muted small">Cần một app Microsoft Entra dùng chung cho mọi phòng. Nhờ IT: đăng ký app → tạo client secret → quyền Application <b>Sites.Selected</b> (admin consent) → cấp quyền <b>read</b> trên site chứa thư mục.</p>
+            <div class="grid2">
+              <div class="field"><label for="tenantId">Tenant ID</label><input id="tenantId" placeholder="xxxxxxxx-xxxx-… hoặc congty.onmicrosoft.com"></div>
+              <div class="field"><label for="clientId">Client ID (app)</label><input id="clientId" placeholder="xxxxxxxx-xxxx-…"></div>
+            </div>
+            <div class="key flat" data-key="SHAREPOINT_CLIENT_SECRET">
+              <div class="key-head"><div><b>Client secret</b></div><span class="k-state pill"></span></div>
+              <div class="k-edit">
+                <div class="row">
+                  <input class="k-input" type="password" autocomplete="off" placeholder="Client secret (Value) của app">
+                  <button type="button" class="small k-save">Lưu khoá</button>
+                  <button type="button" class="ghost small k-cancel" hidden>Huỷ</button>
+                </div>
+              </div>
+              <div class="row k-actions" hidden>
+                <button type="button" class="ghost small k-change">Đổi khoá</button>
+                <button type="button" class="ghost small danger-text k-del">Xoá khoá</button>
+              </div>
+              <p class="k-msg small"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="key" data-key="AI">
+          <div class="key-head">
+            <div><b>Trả lời bằng AI</b> <small class="muted">tuỳ chọn — dán key Gemini <i>hoặc</i> Claude, hệ thống tự nhận</small></div>
+            <span class="k-state pill"></span>
+          </div>
+          <p class="muted small">Chưa có: bot trích đúng câu / dòng khớp nhất trong tài liệu. Có: AI đọc các đoạn đó rồi trả lời tự nhiên — vẫn chỉ dựa trên tài liệu, không dùng internet. Có nhiều AI thì thử lần lượt: Claude → Gemini → Workers AI; tất cả lỗi → tự quay về trích tài liệu.</p>
+          <div class="k-edit">
+            <div class="row">
+              <input class="k-input" type="password" autocomplete="off" placeholder="Key Gemini (AIza… / AQ.…) hoặc key Claude (sk-ant-…)">
+              <button type="button" class="small k-save">Lưu khoá</button>
+              <button type="button" class="ghost small k-cancel" hidden>Huỷ</button>
+            </div>
+            <details><summary>Lấy key ở đâu?</summary>
+              <ul class="steps">
+                <li><b>Gemini</b> (có gói miễn phí): aistudio.google.com/apikey → Create API key. Ở gói miễn phí Google có thể dùng dữ liệu gửi lên để cải thiện sản phẩm.</li>
+                <li><b>Claude</b> (trả phí): console.anthropic.com → Billing nạp credit → API Keys → Create Key.</li>
+              </ul>
+            </details>
+          </div>
+          <div class="wai">
+            <div class="key-head"><div><b>Workers AI (Cloudflare)</b> <small class="muted">miễn phí, không cần key — dùng khi không có key hoặc key lỗi</small></div><span id="wai-state" class="pill"></span></div>
+            <details id="wai-help"><summary>Cách gắn (làm 1 lần trên Cloudflare)</summary>
+              <ol class="steps">
+                <li>dash.cloudflare.com → <b>Workers &amp; Pages</b> → <b>dept-chat</b> → <b>Settings</b> → <b>Bindings</b> → <b>Add</b>.</li>
+                <li>Chọn <b>Workers AI</b>, Variable name gõ <code>AI</code> → Save.</li>
+                <li>Deploy lại một lần (lệnh wrangler như mọi khi) → quay lại đây bấm <b>Thử AI</b>.</li>
+              </ol>
+              <p class="muted small">Gói miễn phí: 10.000 "neuron"/ngày — khoảng vài chục tới một trăm câu hỏi mỗi ngày tuỳ độ dài tài liệu. Dữ liệu chạy trên Cloudflare, không gửi sang Google.</p>
+            </details>
+          </div>
+          <div class="row k-actions" hidden>
+            <button type="button" class="ghost small k-change">Đổi khoá</button>
+            <button type="button" class="ghost small danger-text k-del">Xoá khoá</button>
+          </div>
+          <div class="row"><button type="button" class="small k-aitest" title="Gửi 1 câu ngắn tới từng AI để xem cái nào đang chạy">Thử AI</button></div>
+          <p class="k-msg small"></p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Cài đặt chung</h2>
+        <div class="grid2">
+          <div class="field">
+            <label for="ttl">Đọc lại tài liệu sau mỗi</label>
+            <select id="ttl">
+              <option value="300">5 phút</option><option value="600">10 phút</option>
+              <option value="1800">30 phút</option><option value="3600">1 giờ</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="stats-on"> Lưu thống kê câu hỏi</label>
+            <small class="muted">Lưu ẩn danh câu hỏi, phòng, có trả lời được không, 👍/👎 — không lưu tên hay email người hỏi. Tự xoá sau 180 ngày.</small>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="src-on"> Hiện tên tài liệu dưới câu trả lời</label>
+            <small class="muted">Tắt (mặc định): nhân viên chỉ thấy câu trả lời. Bật: thêm nhãn 📄 tên file đã dùng (chỉ tên, không mở / tải được file).</small>
+          </div>
+        </div>
+      </section>
+      </div>
+    </div>
+  </main>
+
+  <div id="savebar" class="savebar" hidden>
+    <div class="savebar-in">
+      <span id="save-msg">Có thay đổi chưa lưu</span>
+      <button type="button" id="btn-reset" class="ghost small">Huỷ thay đổi</button>
+      <button type="button" id="btn-save">Lưu</button>
+    </div>
+  </div>
+
+  <dialog id="dlg-del">
+    <form method="dialog">
+      <h2>Xoá phòng “<span id="del-name"></span>”?</h2>
+      <ul class="warnlist">
+        <li>Phòng và chatbot của phòng sẽ <b>biến mất khỏi bản đồ</b>.</li>
+        <li>Người dùng không hỏi được phòng này nữa; lịch sử chat đang mở sẽ mất.</li>
+        <li>Tài liệu trên Drive/SharePoint <b>không bị xoá</b> — thêm lại phòng với cùng link là dùng lại được.</li>
+        <li><b>File đã tải lên</b> cho phòng này <b>sẽ bị xoá</b> theo.</li>
+        <li>Chỉ áp dụng khi bấm <b>Lưu</b>.</li>
+      </ul>
+      <div class="actions end">
+        <button value="cancel" class="ghost" autofocus>Giữ lại</button>
+        <button value="ok" class="danger">Xoá phòng</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-key">
+    <form method="dialog">
+      <h2>Xoá khoá <span id="key-name"></span>?</h2>
+      <p id="key-body"></p>
+      <div class="actions end">
+        <button value="cancel" class="ghost" autofocus>Giữ lại</button>
+        <button value="ok" class="danger">Xoá khoá</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-clear">
+    <form method="dialog">
+      <h2>Xoá toàn bộ dữ liệu thống kê?</h2>
+      <p>Mọi câu hỏi, đánh giá 👍/👎 đã lưu sẽ bị xoá vĩnh viễn, không khôi phục được. Cấu hình phòng ban và tài liệu không bị ảnh hưởng.</p>
+      <div class="actions end">
+        <button value="cancel" class="ghost" autofocus>Giữ lại</button>
+        <button value="ok" class="danger">Xoá dữ liệu</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-doc">
+    <form method="dialog">
+      <h2>Xoá file “<span id="doc-name"></span>”?</h2>
+      <p>Bot sẽ không trả lời từ file này nữa. Muốn dùng lại thì tải file lên lần nữa.</p>
+      <div class="actions end">
+        <button value="cancel" class="ghost" autofocus>Giữ lại</button>
+        <button value="ok" class="danger">Xoá file</button>
+      </div>
+    </form>
+  </dialog>
+
+  <template id="tpl-dept">
+    <li class="dept">
+      <div class="dept-head">
+        <input type="color" class="d-color" aria-label="Màu phòng">
+        <input class="d-name" maxlength="40" placeholder="Tên phòng ban (vd: Chăm sóc khách hàng)" aria-label="Tên phòng ban">
+        <span class="d-state pill"></span>
+        <button type="button" class="d-del icon" aria-label="Xoá phòng ban" title="Xoá phòng ban">×</button>
+      </div>
+      <div class="d-src" role="group" aria-label="Nguồn tài liệu">
+        <span class="muted small">Nguồn tài liệu:</span>
+        <button type="button" class="seg" data-src="upload">📄 Tải file lên</button>
+        <button type="button" class="seg" data-src="link">🔗 Link thư mục Drive / SharePoint</button>
+      </div>
+      <div class="d-link">
+        <div class="row">
+          <input class="d-folder" placeholder="Link thư mục Google Drive / SharePoint của phòng này" aria-label="Link thư mục">
+          <button type="button" class="d-test ghost small">Kiểm tra</button>
+        </div>
+        <div class="d-result"></div>
+        <p class="d-link-note small muted"></p>
+      </div>
+      <div class="d-docs">
+        <div class="d-docs-head">
+          <span class="d-docs-used muted small"></span>
+          <label class="ghost small filebtn">＋ Tải file lên<input type="file" class="d-file" multiple accept=".docx,.xlsx,.pdf,.txt,.md,.csv" hidden></label>
+        </div>
+        <ul class="d-doclist"></ul>
+        <p class="d-docs-msg small"></p>
+      </div>
+      <details class="d-more"><summary>Lời chào, câu gợi ý, liên hệ (tuỳ chọn)</summary>
+        <div class="field"><label>Lời chào khi mở chat</label><input class="d-greeting" maxlength="300" placeholder="vd: Chào bạn! Mình hỗ trợ về lương, nghỉ phép, bảo hiểm."></div>
+        <div class="field"><label>Câu hỏi gợi ý <small class="muted" style="display:inline">— mỗi dòng 1 câu, tối đa 5</small></label>
+          <textarea class="d-suggest" rows="3" placeholder="Thủ tục xin nghỉ phép?&#10;Ngày nhận lương?&#10;Đăng ký bảo hiểm thế nào?"></textarea></div>
+        <div class="grid2">
+          <div class="field"><label>Liên hệ khi bot không biết</label><input class="d-contact" maxlength="120" placeholder="vd: chị Lan — ext 204"></div>
+          <div class="field"><label>Phạm vi trả lời</label><input class="d-scope" maxlength="300" placeholder="vd: đổi trả, bảo hành, khiếu nại"></div>
+        </div>
+      </details>
+    </li>
+  </template>
+
+  <script type="module" src="/admin/admin.js"></script>
+</body>
+</html>

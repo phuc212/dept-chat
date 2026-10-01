@@ -1,0 +1,55 @@
+# Tự deploy lên Cloudflare Pages: push / merge vào main → chạy test → deploy.
+# Pull request chỉ chạy test, không deploy.
+#
+# Cần 2 secret ở GitHub → repo → Settings → Secrets and variables → Actions:
+#   CLOUDFLARE_API_TOKEN   token quyền "Account · Cloudflare Pages · Edit"
+#   CLOUDFLARE_ACCOUNT_ID  ID tài khoản Cloudflare (trang Workers & Pages, cột bên phải)
+#
+# Các khoá còn lại (SITE_PASSWORD, ADMIN_PASSWORD, key AI, key Drive) KHÔNG để ở GitHub:
+# đặt trên Cloudflare hoặc trong trang /admin/ như hiện tại — workflow này không đụng tới.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Soát secret
+        run: |
+          [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || { echo "✗ thiếu CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID trong GitHub secrets"; exit 1; }
+      - name: Nạp kho tài liệu mẫu (thư mục kho/)
+        run: node tools/build-kho.mjs
+      - name: Deploy
+        run: npx wrangler pages deploy public --project-name dept-chat --branch main --commit-dirty=true

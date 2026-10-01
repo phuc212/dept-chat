@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hỏi đáp bộ phận</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <header class="hud">
+    <div class="hud-title">
+      <strong>Hỏi đáp bộ phận</strong>
+      <span>WASD / ← ↑ → ↓ để đi · <kbd>E</kbd> nói chuyện · bấm vào phòng để chat</span>
+    </div>
+    <nav id="hud-depts" aria-label="Chọn bộ phận"></nav>
+    <a class="hud-admin" href="/admin/" title="Cấu hình nguồn tài liệu">⚙ Quản trị</a>
+  </header>
+  <div id="sample-banner" class="banner" hidden>
+    Đang dùng <b>dữ liệu mẫu</b> — câu trả lời chưa phải quy định thật của công ty.
+  </div>
+
+  <main class="stage">
+    <canvas id="map" aria-label="Bản đồ văn phòng với 3 phòng: Kế toán, Nhân sự, Phát triển"></canvas>
+  </main>
+
+  <aside id="chat" class="chat" hidden aria-live="polite">
+    <div class="chat-head">
+      <div>
+        <div class="chat-title"></div>
+        <div class="chat-sub"></div>
+      </div>
+      <button type="button" class="chat-reset" title="Cuộc trò chuyện mới">↺</button>
+      <button type="button" class="chat-close" title="Đóng (Esc)">✕</button>
+    </div>
+    <div class="chat-list"></div>
+    <form class="chat-form">
+      <textarea rows="2" maxlength="2000" placeholder="Nhập câu hỏi… (Enter để gửi, Shift+Enter xuống dòng)"></textarea>
+      <button type="submit">Gửi</button>
+    </form>
+  </aside>
+
+  <button type="button" id="fab" class="fab" title="Hỏi chung — tự tìm đúng phòng ban">💬 <span>Hỏi nhanh</span></button>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

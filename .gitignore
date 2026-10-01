@@ -1,0 +1,22 @@
+node_modules/
+.dev.vars
+.env
+.wrangler/
+dist-artifact/
+functions/_kho.js
+.kho-drive/
+*service-account*.json
+google-key*.json
+
+# file cũ / tạm, không cần lên GitHub
+files/
+files.zip
+wrangler.toml.bak
+ci/_empty-placeholder
+
+# KHÔNG BAO GIỜ đưa khoá lên GitHub
+key*.json
+*-key.json
+*.pem
+.DS_Store
+Thumbs.db

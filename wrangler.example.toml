@@ -1,0 +1,14 @@
+# ⚠️ CỐ Ý KHÔNG dùng wrangler.toml cho project này.
+# Có wrangler.toml thì Cloudflare khoá phần Variables/Bindings trên dashboard ("managed through
+# wrangler.toml") → không gắn được KV `CONFIG` và biến bằng giao diện web. Không có file này thì
+# mọi cấu hình làm trên dashboard, deploy bằng:
+#   npx wrangler pages deploy public --project-name dept-chat --branch main
+#
+# Chỉ đổi tên file này thành wrangler.toml nếu bạn muốn quản lý cấu hình bằng code thay vì web.
+name = "dept-chat"
+pages_build_output_dir = "public"
+compatibility_date = "2026-09-01"
+
+# [[kv_namespaces]]
+# binding = "CONFIG"
+# id = "<id namespace KV>"

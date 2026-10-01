@@ -1,0 +1,39 @@
+# Tự đồng bộ kho từ Google Drive rồi deploy — mỗi giờ trong giờ làm việc (giờ VN) + bấm tay.
+# Đặt file này ở .github/workflows/sync-drive.yml.
+#
+# Secret (Settings → Environments → production):
+#   GOOGLE_SA_KEY          nội dung NGUYÊN file key.json của service account
+#   DRIVE_FOLDER_ID        id (hoặc link) thư mục Drive đã chia sẻ cho service account
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   như deploy.yml
+name: sync-drive
+
+on:
+  schedule:
+    - cron: '0 1-10 * * 1-5'     # 08:00–17:00 giờ VN (UTC+7), thứ 2–6
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Đồng bộ Drive → kho
+        env:
+          GOOGLE_SA_KEY: ${{ secrets.GOOGLE_SA_KEY }}
+          DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+        run: npm run kho:drive
+      - run: npm test
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy public --project-name dept-chat --branch main --commit-dirty=true
